@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QGraphicsScene
 from PySide6.QtCore import QRectF
 from core import load_config
+from core.models import PuzzleConfig, PuzzleResult
 from .items.page_item import PageItem
 from .items.puzzle_item import PuzzleItem
 from .items.wordbox_item import WordBoxItem
@@ -34,6 +35,13 @@ class DiagramScene(QGraphicsScene):
         self._layout_initial()
 
         self.wordbox_item.position_changed.connect(self.layout_controller.adjust_layout)
+
+    def display_puzzle(self, config: PuzzleConfig, result: PuzzleResult) -> None:
+        """Envía los datos de un puzzle a los items visuales."""
+        self.puzzle_item.set_grid(result.grid)
+        word_order = [position.word for position in result.positions]
+        self.wordbox_item.set_words(word_order)
+        self.layout_controller.adjust_layout()
 
     def _layout_initial(self):
         page_rect = self.page_item.margin_rect()
