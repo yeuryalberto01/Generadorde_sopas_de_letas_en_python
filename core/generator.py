@@ -12,6 +12,7 @@ except ImportError as exc:  # pragma: no cover - fallback para usuarios sin depe
     ) from exc
 
 from .models import PuzzleConfig, PuzzleResult, WordPosition
+from .lexicon import validate_word
 
 DirectionVec = Tuple[int, int]
 
@@ -42,7 +43,14 @@ def generate_puzzle(config: PuzzleConfig) -> PuzzleResult:
     rng = random.Random()
     positions: list[WordPosition] = []
 
-    ordered_words = sorted(config.words, key=len, reverse=True)
+    validated_words: list[str] = []
+    for raw_word in config.words:
+        result = validate_word(raw_word)
+        if not result.valid:
+            raise PuzzleGenerationError("; ".join(result.errors))
+        validated_words.append(result.normalized)
+
+    ordered_words = sorted(validated_words, key=len, reverse=True)
     allowed_dirs = _resolve_directions(config.directions)
 
     for word in ordered_words:

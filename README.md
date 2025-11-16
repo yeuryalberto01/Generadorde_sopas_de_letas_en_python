@@ -66,7 +66,7 @@ En la aplicación de escritorio encontrarás el menú `Puzzle`:
 - **Generar nuevo...** abre un diálogo para definir filas, columnas, dificultad, palabras, alfabeto y direcciones soportadas. Tras validar los datos se invoca el backend real y, opcionalmente, se guarda el resultado en SQLite.
 - **Regenerar último** vuelve a crear la sopa usando la última configuración aplicada, útil para experimentar con diferentes alfabetos o layouts sin volver a tipear la lista de palabras.
 - **Abrir guardado...** muestra los puzzles almacenados recientemente (consultados desde SQLite) y permite cargar uno para seguir editando o exportarlo.
-- Desde `Archivo > Exportar...` puedes renderizar la página actual como PDF (con las dimensiones originales en puntos) o como PNG de alta resolución listo para imprimir/compartir.
+- `Archivo > Exportar imagen...` genera un PNG en alta resolución y `Archivo > Exportar a PDF` utiliza un exportador dedicado con QPrinter para conservar la página completa en PDF.
 
 ### Modo CLI y Persistencia
 

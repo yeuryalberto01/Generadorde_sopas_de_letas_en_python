@@ -1,4 +1,5 @@
-from PySide6.QtCore import QRectF
+# pylint: disable=no-name-in-module,missing-module-docstring,missing-class-docstring,missing-function-docstring
+from PySide6.QtCore import QRectF, QTimer
 
 
 class LayoutController:
@@ -6,8 +7,14 @@ class LayoutController:
         self.page_item = page_item
         self.puzzle_item = puzzle_item
         self.wordbox_item = wordbox_item
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self._do_adjust)
 
     def adjust_layout(self):
+        self.timer.start(100)
+
+    def _do_adjust(self):
         margin_rect: QRectF = self.page_item.margin_rect()
         wordbox_rect = self.wordbox_item.sceneBoundingRect()
         center_y = wordbox_rect.center().y()
@@ -32,19 +39,19 @@ class LayoutController:
             puzzle_height = max(10.0, word_top - gutter - puzzle_top)
 
         # Actualizar wordbox
-        self.wordbox_item.setPos(0, 0)
+        self.wordbox_item.setPos(margin_rect.left() + inset, word_top)
         self.wordbox_item.setRect(
-            margin_rect.left() + inset,
-            word_top,
+            0,
+            0,
             available_width,
             word_height,
         )
 
         # Actualizar puzzle
-        self.puzzle_item.setPos(0, 0)
+        self.puzzle_item.setPos(margin_rect.left() + inset, puzzle_top)
         self.puzzle_item.setRect(
-            margin_rect.left() + inset,
-            puzzle_top,
+            0,
+            0,
             available_width,
             puzzle_height,
         )

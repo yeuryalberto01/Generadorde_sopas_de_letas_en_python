@@ -22,6 +22,10 @@ DEFAULT_CONFIG = {
         "sizes": [(10, 10), (15, 15), (20, 20)],
         "default_size": (15, 15),
     },
+    "words": {
+        "min_length": 2,
+        "max_length": 30,
+    },
     "difficulty": ["easy", "medium", "hard"],
     "theme": {
         "background_color": "#2b2b2b",

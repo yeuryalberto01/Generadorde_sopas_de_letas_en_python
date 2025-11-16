@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt  # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QFileDialog,
+    QDockWidget,
     QMainWindow,
     QMenu,
     QMessageBox,
 )  # pylint: disable=no-name-in-module
 from PySide6.QtGui import QAction  # pylint: disable=no-name-in-module
+
+from export import export_scene_to_pdf as printer_export_pdf  # nuevo módulo
 
 from core import PuzzleGenerationError, generate_puzzle, load_puzzle, save_puzzle
 from core.models import PuzzleConfig, PuzzleResult
@@ -19,8 +23,9 @@ from .view import DiagramView
 from .scene import DiagramScene
 from .project_overview_dialog import ProjectOverviewDialog
 from .config_dialog import ConfigDialog, show_validation_error
-from .exporter import export_scene_to_pdf, export_scene_to_png
+from .exporter import export_scene_to_png
 from .load_puzzle_dialog import LoadPuzzleDialog
+from .panels.properties_panel import PropertiesPanel
 
 
 class MainWindow(QMainWindow):
@@ -33,6 +38,12 @@ class MainWindow(QMainWindow):
         self.view = DiagramView(self.scene, self)
         self.setCentralWidget(self.view)
 
+        self.properties_panel = PropertiesPanel(self)
+        self.properties_dock = QDockWidget("Propiedades", self)
+        self.properties_dock.setWidget(self.properties_panel)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.properties_dock)
+        self.scene.selectionChanged.connect(self._update_properties_panel)
+
         self.current_config: PuzzleConfig | None = None
         self.current_result: PuzzleResult | None = None
         self._last_config_id: int | None = None
@@ -40,13 +51,18 @@ class MainWindow(QMainWindow):
         self.resize(1000, 800)
         self.view.centerOn(self.scene.page_item)
         self._build_menus()
+        self._update_properties_panel()
         self.statusBar().showMessage("Listo para generar un nuevo puzzle.")
 
     def _build_menus(self):
         menu_archivo: QMenu = self.menuBar().addMenu("Archivo")
-        export_action = QAction("Exportar...", self)
-        export_action.triggered.connect(self._handle_export)
-        menu_archivo.addAction(export_action)
+        export_image_action = QAction("Exportar imagen...", self)
+        export_image_action.triggered.connect(self._handle_export_image)
+        menu_archivo.addAction(export_image_action)
+
+        export_pdf_action = QAction("Exportar a PDF", self)
+        export_pdf_action.triggered.connect(self._handle_export_pdf)
+        menu_archivo.addAction(export_pdf_action)
 
         menu_archivo.addSeparator()
 
@@ -151,7 +167,7 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("Puzzle generado.", 5000)
 
-    def _handle_export(self) -> None:
+    def _handle_export_image(self) -> None:
         if self.current_result is None:
             QMessageBox.information(
                 self,
@@ -159,11 +175,11 @@ class MainWindow(QMainWindow):
                 "Genera un puzzle antes de exportarlo.",
             )
             return
-        filters = "PDF (*.pdf);;PNG (*.png)"
-        default_path = str(Path.home() / "puzzle.pdf")
-        path, selected_filter = QFileDialog.getSaveFileName(
+        filters = "PNG (*.png)"
+        default_path = str(Path.home() / "puzzle.png")
+        path, _ = QFileDialog.getSaveFileName(
             self,
-            "Exportar puzzle",
+            "Exportar imagen del puzzle",
             default_path,
             filters,
         )
@@ -172,22 +188,47 @@ class MainWindow(QMainWindow):
         suffix = Path(path).suffix.lower()
         target_path = path
         try:
-            if suffix == ".pdf" or "pdf" in selected_filter.lower():
-                if suffix != ".pdf":
-                    target_path = f"{path}.pdf"
-                export_scene_to_pdf(self.scene, target_path)
-            else:
-                if suffix != ".png":
-                    target_path = f"{path}.png"
-                export_scene_to_png(self.scene, target_path)
+            if suffix != ".png":
+                target_path = f"{path}.png"
+            export_scene_to_png(self.scene, target_path)
         except Exception as exc:  # pylint: disable=broad-except
             QMessageBox.critical(self, "Error al exportar", str(exc))
             return
         self.statusBar().showMessage(f"Puzzle exportado en {target_path}", 5000)
 
+    def _handle_export_pdf(self) -> None:
+        if self.current_result is None:
+            QMessageBox.information(
+                self,
+                "Nada que exportar",
+                "Genera un puzzle antes de exportarlo.",
+            )
+            return
+        default_path = str(Path.home() / "puzzle.pdf")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar a PDF",
+            default_path,
+            "PDF (*.pdf)",
+        )
+        if not path:
+            return
+        target_path = path if Path(path).suffix.lower() == ".pdf" else f"{path}.pdf"
+        try:
+            printer_export_pdf(self.scene, target_path)
+        except Exception as exc:  # pylint: disable=broad-except
+            QMessageBox.critical(self, "Error al exportar PDF", str(exc))
+            return
+        self.statusBar().showMessage(f"PDF guardado en {target_path}", 5000)
+
     def _show_project_overview(self):
         dialog = ProjectOverviewDialog(self)
         dialog.exec()
+
+    def _update_properties_panel(self) -> None:
+        if not hasattr(self, "properties_panel"):
+            return
+        self.properties_panel.update_from_items(self.scene.selectedItems())
 
 
 if __name__ == "__main__":

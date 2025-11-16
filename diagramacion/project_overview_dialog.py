@@ -93,6 +93,10 @@ PROJECT_STRUCTURE: List[Dict[str, Any]] = [
                 "description": "Elementos gráficos individuales (página, puzzle, wordbox, etc.).",
             },
             {
+                "name": "panels/",
+                "description": "Paneles dockeables como el de propiedades de selección.",
+            },
+            {
                 "name": "controllers/",
                 "description": "Controladores como `LayoutController` que mantienen los márgenes.",
             },

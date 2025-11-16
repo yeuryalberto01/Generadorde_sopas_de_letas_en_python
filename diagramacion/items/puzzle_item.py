@@ -1,3 +1,4 @@
+# pylint: disable=no-name-in-module,missing-module-docstring,missing-class-docstring,missing-function-docstring
 from PySide6.QtWidgets import QGraphicsRectItem
 from PySide6.QtGui import QPen, QColor, QFont
 from PySide6.QtCore import QRectF, Qt
@@ -21,7 +22,7 @@ class PuzzleItem(QGraphicsRectItem):
         pen.setWidthF(1.0)
         self.setPen(pen)
 
-    def setRect(self, x: float, y: float, w: float, h: float) -> None:  # type: ignore[override]
+    def setRect(self, x: float, y: float, w: float, h: float) -> None:  # type: ignore[override]  # pylint: disable=invalid-name
         super().setRect(QRectF(x, y, w, h))
 
     def set_grid(self, grid: list[list[str]]) -> None:

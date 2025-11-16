@@ -4,6 +4,8 @@ from typing import ClassVar, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .lexicon import validate_word
+
 DEFAULT_DIRECTION_SET = [
     "E",
     "W",
@@ -21,8 +23,7 @@ class PuzzleConfig(BaseModel):
 
     MIN_SIZE: ClassVar[int] = 5
     MAX_SIZE: ClassVar[int] = 35
-    MIN_WORD_LENGTH: ClassVar[int] = 2
-    MAX_WORD_LENGTH: ClassVar[int] = 30
+    MIN_ALPHABET_LENGTH: ClassVar[int] = 2
     ALLOWED_DIFFICULTIES: ClassVar[set[str]] = {"easy", "medium", "hard"}
     DEFAULT_DIRECTIONS: ClassVar[list[str]] = DEFAULT_DIRECTION_SET
 
@@ -32,7 +33,7 @@ class PuzzleConfig(BaseModel):
     cols: int = Field(default=15)
     difficulty: str = Field(default="medium")
     alphabet: str = Field(
-        default="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ", min_length=MIN_WORD_LENGTH
+        default="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ", min_length=MIN_ALPHABET_LENGTH
     )
     directions: List[str] = Field(default_factory=lambda: DEFAULT_DIRECTION_SET.copy())
 
@@ -65,7 +66,7 @@ class PuzzleConfig(BaseModel):
             seen.add(upper)
             normalized_chars.append(upper)
         normalized = "".join(normalized_chars)
-        if len(normalized) < cls.MIN_WORD_LENGTH:
+        if len(normalized) < cls.MIN_ALPHABET_LENGTH:
             raise ValueError("El alfabeto debe tener al menos 2 caracteres distintos.")
         return normalized
 
@@ -90,13 +91,10 @@ class PuzzleConfig(BaseModel):
         normalized: list[str] = []
         seen: set[str] = set()
         for word in words:
-            clean = word.strip().upper()
-            if not clean:
-                continue
-            if len(clean) < cls.MIN_WORD_LENGTH or len(clean) > cls.MAX_WORD_LENGTH:
-                raise ValueError(
-                    f"La palabra '{word}' debe tener entre {cls.MIN_WORD_LENGTH} y {cls.MAX_WORD_LENGTH} caracteres."
-                )
+            result = validate_word(word)
+            if not result.valid:
+                raise ValueError("; ".join(result.errors))
+            clean = result.normalized
             if clean in seen:
                 raise ValueError(f"La palabra '{clean}' está duplicada.")
             normalized.append(clean)
