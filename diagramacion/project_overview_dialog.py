@@ -97,6 +97,10 @@ PROJECT_STRUCTURE: List[Dict[str, Any]] = [
                 "description": "Paneles dockeables como el de propiedades de selección.",
             },
             {
+                "name": "temas_dialog.py",
+                "description": "Diálogo dedicado para crear, renombrar y borrar temas y sus palabras.",
+            },
+            {
                 "name": "controllers/",
                 "description": "Controladores como `LayoutController` que mantienen los márgenes.",
             },

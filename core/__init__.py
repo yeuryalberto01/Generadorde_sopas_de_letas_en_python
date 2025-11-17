@@ -2,7 +2,15 @@ from .config import load_config
 from .generator import generate_puzzle, PuzzleGenerationError
 from .db import init_db, list_recent_puzzles, load_puzzle, save_puzzle
 from .lexicon import WordValidationResult, validate_word
-from .themes import create_theme, add_word_to_theme, list_themes, get_words_for_theme
+from .themes import (
+    create_theme,
+    update_theme,
+    delete_theme,
+    add_word_to_theme,
+    delete_word,
+    list_themes,
+    get_words_for_theme,
+)
 from . import models, layouts
 
 __all__ = [
@@ -16,7 +24,10 @@ __all__ = [
     "validate_word",
     "WordValidationResult",
     "create_theme",
+    "update_theme",
+    "delete_theme",
     "add_word_to_theme",
+    "delete_word",
     "list_themes",
     "get_words_for_theme",
     "models",

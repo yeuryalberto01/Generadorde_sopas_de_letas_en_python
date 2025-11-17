@@ -67,6 +67,7 @@ En la aplicación de escritorio encontrarás el menú `Puzzle`:
 - **Regenerar último** vuelve a crear la sopa usando la última configuración aplicada, útil para experimentar con diferentes alfabetos o layouts sin volver a tipear la lista de palabras.
 - **Abrir guardado...** muestra los puzzles almacenados recientemente (consultados desde SQLite) y permite cargar uno para seguir editando o exportarlo.
 - `Archivo > Exportar imagen...` genera un PNG en alta resolución y `Archivo > Exportar a PDF` utiliza un exportador dedicado con QPrinter para conservar la página completa en PDF.
+- En el menú **Temas** puedes abrir el diálogo de gestión (crear, renombrar, eliminar temas y palabras) o generar una sopa directamente a partir de las palabras registradas en un tema.
 
 ### Modo CLI y Persistencia
 

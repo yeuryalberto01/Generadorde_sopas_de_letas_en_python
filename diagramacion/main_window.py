@@ -8,15 +8,25 @@ from PySide6.QtCore import Qt  # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QFileDialog,
     QDockWidget,
+    QInputDialog,
     QMainWindow,
     QMenu,
     QMessageBox,
+    QStackedWidget,
 )  # pylint: disable=no-name-in-module
 from PySide6.QtGui import QAction  # pylint: disable=no-name-in-module
 
 from export import export_scene_to_pdf as printer_export_pdf  # nuevo módulo
 
-from core import PuzzleGenerationError, generate_puzzle, load_puzzle, save_puzzle
+from core import (
+    PuzzleGenerationError,
+    generate_puzzle,
+    get_words_for_theme,
+    list_themes,
+    load_config,
+    load_puzzle,
+    save_puzzle,
+)
 from core.models import PuzzleConfig, PuzzleResult
 
 from .view import DiagramView
@@ -24,7 +34,9 @@ from .scene import DiagramScene
 from .project_overview_dialog import ProjectOverviewDialog
 from .config_dialog import ConfigDialog, show_validation_error
 from .exporter import export_scene_to_png
+from .home import HomeWidget
 from .load_puzzle_dialog import LoadPuzzleDialog
+from .temas_dialog import TemasDialog
 from .panels.properties_panel import PropertiesPanel
 
 
@@ -36,7 +48,17 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Generador de Sopas - Diagramación")
         self.scene = DiagramScene(self)
         self.view = DiagramView(self.scene, self)
-        self.setCentralWidget(self.view)
+
+        self.stack = QStackedWidget(self)
+        self.setCentralWidget(self.stack)
+
+        self.home = HomeWidget(self)
+        self.home.open_temas.connect(self.open_temas_module)
+        self.home.open_quick_generator.connect(self.open_quick_generator)
+        self.home.open_diagramacion.connect(self.open_diagramacion_module)
+        self.stack.addWidget(self.home)
+        self.stack.addWidget(self.view)
+        self.stack.setCurrentWidget(self.home)
 
         self.properties_panel = PropertiesPanel(self)
         self.properties_dock = QDockWidget("Propiedades", self)
@@ -89,6 +111,18 @@ class MainWindow(QMainWindow):
         center_action = QAction("Centrar página", self)
         center_action.triggered.connect(lambda: self.view.centerOn(self.scene.page_item))
         menu_ver.addAction(center_action)
+        home_action = QAction("Ir al inicio", self)
+        home_action.triggered.connect(lambda: self.stack.setCurrentWidget(self.home))
+        menu_ver.addAction(home_action)
+
+        menu_temas: QMenu = self.menuBar().addMenu("Temas")
+        manage_action = QAction("Gestionar temas...", self)
+        manage_action.triggered.connect(self.open_temas_module)
+        menu_temas.addAction(manage_action)
+
+        generate_from_theme_action = QAction("Generar desde tema...", self)
+        generate_from_theme_action.triggered.connect(self._handle_generate_from_theme)
+        menu_temas.addAction(generate_from_theme_action)
 
         menu_ayuda: QMenu = self.menuBar().addMenu("Ayuda")
         overview_action = QAction("Mostrar resumen del proyecto", self)
@@ -158,6 +192,7 @@ class MainWindow(QMainWindow):
 
         self.current_config = config
         self.current_result = result
+        self.open_diagramacion_module()
         self.scene.display_puzzle(config, result)
         self._regenerate_action.setEnabled(True)
 
@@ -166,6 +201,80 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Puzzle guardado con ID {config_id}.", 5000)
         else:
             self.statusBar().showMessage("Puzzle generado.", 5000)
+
+    def open_temas_module(self) -> None:
+        dialog = TemasDialog(self)
+        dialog.exec()
+
+    def open_diagramacion_module(self) -> None:
+        self.stack.setCurrentWidget(self.view)
+
+    def open_quick_generator(self) -> None:
+        QMessageBox.information(
+            self,
+            "Generador rápido",
+            "El generador rápido aún no está implementado.",
+        )
+
+    def _handle_generate_from_theme(self) -> None:
+        available = list_themes()
+        if not available:
+            QMessageBox.information(
+                self,
+                "Sin temas",
+                "Aún no hay temas creados. Usa 'Gestionar temas...' para agregar uno.",
+            )
+            return
+        names = [name for _, name, _ in available]
+        selected_name, ok = QInputDialog.getItem(
+            self,
+            "Seleccionar tema",
+            "Elige un tema para generar la sopa:",
+            names,
+            editable=False,
+        )
+        if not ok or not selected_name:
+            return
+        theme_id = next(tid for tid, name, _ in available if name == selected_name)
+        words_data = get_words_for_theme(theme_id)
+        if not words_data:
+            QMessageBox.information(
+                self,
+                "Tema sin palabras",
+                "El tema seleccionado no tiene palabras registradas.",
+            )
+            return
+        words = [normalized for _, normalized, _ in words_data]
+        params = self._default_generation_params()
+        try:
+            config = PuzzleConfig(
+                theme_id=theme_id,
+                words=words,
+                rows=params["rows"],
+                cols=params["cols"],
+                difficulty=params["difficulty"],
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            QMessageBox.warning(self, "Configuración inválida", str(exc))
+            return
+        self._generate_and_display(config, persist=True)
+
+    def _default_generation_params(self) -> dict:
+        if self.current_config:
+            return {
+                "rows": self.current_config.rows,
+                "cols": self.current_config.cols,
+                "difficulty": self.current_config.difficulty,
+            }
+        cfg = load_config()
+        rows, cols = cfg.get("grid", {}).get("default_size", (15, 15))
+        difficulty = "medium"
+        difficulty_options = cfg.get("difficulty")
+        if isinstance(difficulty_options, list) and difficulty_options:
+            # tomar el valor medio si existe
+            mid_index = len(difficulty_options) // 2
+            difficulty = str(difficulty_options[mid_index]).lower()
+        return {"rows": rows, "cols": cols, "difficulty": difficulty}
 
     def _handle_export_image(self) -> None:
         if self.current_result is None:

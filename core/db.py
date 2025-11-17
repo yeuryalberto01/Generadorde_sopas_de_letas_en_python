@@ -43,10 +43,16 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 theme_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
+                original TEXT,
                 FOREIGN KEY (theme_id) REFERENCES themes(id)
             );
             """
         )
+        # Asegurar columna original exista
+        try:
+            cur.execute("ALTER TABLE words ADD COLUMN original TEXT;")
+        except sqlite3.OperationalError:
+            pass
         # Layouts de página (futuro)
         cur.execute(
             """

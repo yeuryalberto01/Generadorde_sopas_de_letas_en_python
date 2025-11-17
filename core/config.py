@@ -23,8 +23,8 @@ DEFAULT_CONFIG = {
         "default_size": (15, 15),
     },
     "words": {
-        "min_length": 2,
-        "max_length": 30,
+        "min_length": 3,
+        "max_length": 20,
     },
     "difficulty": ["easy", "medium", "hard"],
     "theme": {
