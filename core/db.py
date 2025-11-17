@@ -26,34 +26,51 @@ def get_conn():
 def init_db():
     with get_conn() as conn:
         cur = conn.cursor()
-        # Temas (futuro)
+
+        # --- Nuevo Esquema de Temas ---
+
+        # 1. Tabla para Categorías de Temas
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE
+            );
+            """
+        )
+
+        # 2. Tabla de Temas mejorada
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS themes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                description TEXT
+                name TEXT NOT NULL,
+                description TEXT,
+                category_id INTEGER,
+                metadata_json TEXT,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+                UNIQUE (name, category_id)
             );
             """
         )
-        # Palabras (futuro)
+
+        # 3. Listas de palabras por Tema y Dificultad
         cur.execute(
             """
-            CREATE TABLE IF NOT EXISTS words (
+            CREATE TABLE IF NOT EXISTS theme_word_lists (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 theme_id INTEGER NOT NULL,
-                word TEXT NOT NULL,
-                original TEXT,
-                FOREIGN KEY (theme_id) REFERENCES themes(id)
+                difficulty TEXT NOT NULL,
+                words_json TEXT NOT NULL,
+                FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
+                UNIQUE (theme_id, difficulty)
             );
             """
         )
-        # Asegurar columna original exista
-        try:
-            cur.execute("ALTER TABLE words ADD COLUMN original TEXT;")
-        except sqlite3.OperationalError:
-            pass
-        # Layouts de página (futuro)
+
+        # --- Fin del Nuevo Esquema de Temas ---
+
+        # Layouts de página (sin cambios)
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS page_layouts (
@@ -63,7 +80,7 @@ def init_db():
             );
             """
         )
-        # Configuraciones utilizadas
+        # Configuraciones utilizadas (sin cambios)
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS puzzle_configs (
@@ -79,7 +96,7 @@ def init_db():
             );
             """
         )
-        # Resultados generados
+        # Resultados generados (sin cambios)
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS puzzle_results (
@@ -95,6 +112,9 @@ def init_db():
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_results_config_id ON puzzle_results(config_id);"
         )
+
+        # Limpieza: Eliminar la tabla 'words' si existe, ya que es obsoleta
+        cur.execute("DROP TABLE IF EXISTS words;")
 
 
 def save_puzzle(config: PuzzleConfig, result: PuzzleResult) -> int:

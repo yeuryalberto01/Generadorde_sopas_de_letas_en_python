@@ -58,8 +58,8 @@ class ConfigDialog(QDialog):
 
         self.difficulty_combo = QComboBox(self)
         for diff in sorted(PuzzleConfig.ALLOWED_DIFFICULTIES):
-            self.difficulty_combo.addItem(diff.title(), diff)
-        self.difficulty_combo.setCurrentText("Medium")
+            self.difficulty_combo.addItem(diff.capitalize(), diff)
+        self.difficulty_combo.setCurrentText("Medio")
         form_layout.addRow("Dificultad", self.difficulty_combo)
 
         self.alphabet_input = QLineEdit(self)

@@ -18,7 +18,7 @@ from core.models import PuzzleConfig
 from diagramacion.main_window import MainWindow
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:  # pylint: disable=missing-function-docstring
     parser = argparse.ArgumentParser(
         description="Generador de sopas de letras con GUI o modo CLI.",
     )
@@ -66,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=missing-function-docstring
     """Initialize the database and launch the CLI handler or GUI."""
     args = build_parser().parse_args(argv)
     init_db()

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QGraphicsView
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QWheelEvent, QMouseEvent, QPainter
+from PySide6.QtGui import QWheelEvent, QMouseEvent, QPainter, QBrush, QColor
 
 
 class DiagramView(QGraphicsView):
@@ -8,6 +8,7 @@ class DiagramView(QGraphicsView):
         super().__init__(*args, **kwargs)
         self.setRenderHint(QPainter.Antialiasing, True)
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
+        self.setBackgroundBrush(QBrush(QColor("#131722")))
         self._panning = False
         self._pan_start = None
         self._zoom_factor = 1.0

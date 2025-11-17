@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
+from PySide6.QtCore import Qt  # pylint: disable=no-name-in-module
+from PySide6.QtWidgets import (  # pylint: disable=no-name-in-module
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -35,11 +35,10 @@ class TemasDialog(QDialog):
     def _build_ui(self) -> None:
         main_layout = QHBoxLayout(self)
 
-        # panel izquierdo
         left_panel = QVBoxLayout()
+        left_panel.addWidget(QLabel("Temas disponibles", self))
         self.theme_list = QListWidget(self)
         self.theme_list.currentItemChanged.connect(self._handle_theme_selection)
-        left_panel.addWidget(QLabel("Temas disponibles", self))
         left_panel.addWidget(self.theme_list)
 
         theme_form = QFormLayout()
@@ -55,12 +54,10 @@ class TemasDialog(QDialog):
         btn_rename_theme.clicked.connect(self._handle_rename_theme)
         btn_delete_theme = QPushButton("Eliminar tema", self)
         btn_delete_theme.clicked.connect(self._handle_delete_theme)
-
         left_panel.addWidget(btn_add_theme)
         left_panel.addWidget(btn_rename_theme)
         left_panel.addWidget(btn_delete_theme)
 
-        # panel derecho
         right_panel = QVBoxLayout()
         right_panel.addWidget(QLabel("Palabras del tema", self))
         self.words_table = QTableWidget(self)
@@ -75,9 +72,8 @@ class TemasDialog(QDialog):
         self.new_word_input.setPlaceholderText("Nueva palabra")
         btn_add_word = QPushButton("Agregar palabra", self)
         btn_add_word.clicked.connect(self._handle_add_word)
-        btn_delete_word = QPushButton("Eliminar palabra", self)
+        btn_delete_word = QPushButton("Eliminar palabra seleccionada", self)
         btn_delete_word.clicked.connect(self._handle_delete_word)
-
         right_panel.addWidget(self.new_word_input)
         right_panel.addWidget(btn_add_word)
         right_panel.addWidget(btn_delete_word)
@@ -85,7 +81,6 @@ class TemasDialog(QDialog):
         main_layout.addLayout(left_panel, 1)
         main_layout.addLayout(right_panel, 2)
 
-    # region theme handlers
     def _load_themes(self) -> None:
         current_id = self._theme_id
         self.theme_list.clear()
@@ -114,16 +109,23 @@ class TemasDialog(QDialog):
             return None
         return int(current.data(Qt.ItemDataRole.UserRole))
 
-    def _handle_theme_selection(self, _current: QListWidgetItem, _previous: QListWidgetItem) -> None:
+    def _handle_theme_selection(
+        self,
+        current: QListWidgetItem | None,
+        _previous: QListWidgetItem | None,
+    ) -> None:
         self._theme_id = self._selected_theme_id()
-        if _current is not None:
-            self.new_theme_name.setText(_current.text())
-            self.new_theme_desc.setText(_current.toolTip() or "")
+        if current is not None:
+            self.new_theme_name.setText(current.text())
+            self.new_theme_desc.setText(current.toolTip() or "")
         self._load_words()
 
     def _handle_add_theme(self) -> None:
         name = self.new_theme_name.text()
         description = self.new_theme_desc.text() or None
+        if not name.strip():
+            QMessageBox.warning(self, "Nombre inválido", "Ingresa un nombre para el tema.")
+            return
         try:
             themes.create_theme(name, description)
         except Exception as exc:  # pylint: disable=broad-except
@@ -141,12 +143,12 @@ class TemasDialog(QDialog):
         name = self.new_theme_name.text()
         description = self.new_theme_desc.text() or None
         if not name.strip():
-            QMessageBox.warning(self, "Nombre inválido", "Ingresa un nuevo nombre para el tema.")
+            QMessageBox.warning(self, "Nombre inválido", "Ingresa el nuevo nombre para el tema.")
             return
         try:
             themes.update_theme(theme_id, name, description)
         except Exception as exc:  # pylint: disable=broad-except
-            QMessageBox.warning(self, "No se pudo actualizar", str(exc))
+            QMessageBox.warning(self, "No se pudo actualizar el tema", str(exc))
             return
         self._load_themes()
 
@@ -165,14 +167,11 @@ class TemasDialog(QDialog):
         try:
             themes.delete_theme(theme_id)
         except Exception as exc:  # pylint: disable=broad-except
-            QMessageBox.warning(self, "No se pudo eliminar", str(exc))
+            QMessageBox.warning(self, "No se pudo eliminar el tema", str(exc))
             return
         self._load_themes()
         self.words_table.setRowCount(0)
 
-    # endregion
-
-    # region words handlers
     def _load_words(self) -> None:
         self.words_table.setRowCount(0)
         if self._theme_id is None:
@@ -200,7 +199,7 @@ class TemasDialog(QDialog):
             return
         word = self.new_word_input.text()
         if not word.strip():
-            QMessageBox.warning(self, "Palabra vacía", "Ingresa una palabra antes de agregarla.")
+            QMessageBox.warning(self, "Palabra vacía", "Ingresa una palabra.")
             return
         try:
             themes.add_word_to_theme(theme_id, word)
@@ -232,4 +231,5 @@ class TemasDialog(QDialog):
             return
         self._load_words()
 
-    # endregion
+
+__all__ = ["TemasDialog"]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -9,6 +9,7 @@ from .lexicon import validate_word
 DEFAULT_DIRECTION_SET = [
     "E",
     "W",
+
     "N",
     "S",
     "NE",
@@ -24,14 +25,14 @@ class PuzzleConfig(BaseModel):
     MIN_SIZE: ClassVar[int] = 5
     MAX_SIZE: ClassVar[int] = 35
     MIN_ALPHABET_LENGTH: ClassVar[int] = 2
-    ALLOWED_DIFFICULTIES: ClassVar[set[str]] = {"easy", "medium", "hard"}
+    ALLOWED_DIFFICULTIES: ClassVar[set[str]] = {"fácil", "medio", "difícil"}
     DEFAULT_DIRECTIONS: ClassVar[list[str]] = DEFAULT_DIRECTION_SET
 
     theme_id: Optional[int] = None
     words: List[str] = Field(min_length=1)
     rows: int = Field(default=15)
     cols: int = Field(default=15)
-    difficulty: str = Field(default="medium")
+    difficulty: str = Field(default="medio")
     alphabet: str = Field(
         default="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ", min_length=MIN_ALPHABET_LENGTH
     )
@@ -124,3 +125,45 @@ class WordPosition(BaseModel):
 class PuzzleResult(BaseModel):
     grid: List[List[str]]
     positions: List[WordPosition]
+
+
+# --- Nuevos Modelos para Temas ---
+
+
+class Category(BaseModel):
+    """Representa una categoría para agrupar temas."""
+
+    id: int
+    name: str
+
+
+class ThemeWordList(BaseModel):
+    """Representa una lista de palabras para un tema y una dificultad específica."""
+
+    id: int
+    theme_id: int
+    difficulty: str
+    words: List[str]
+
+    @field_validator("difficulty")
+    @classmethod
+    def _check_difficulty(cls, value: str) -> str:
+        value = value.lower()
+        # Reutilizamos la validación definida en PuzzleConfig
+        if value not in PuzzleConfig.ALLOWED_DIFFICULTIES:
+            raise ValueError(f"Dificultad inválida: {value}")
+        return value
+
+
+class Theme(BaseModel):
+    """Modelo completo para un tema, incluyendo sus listas de palabras y metadatos."""
+
+    id: int
+    name: str
+    description: Optional[str] = None
+    category: Optional[Category] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    word_lists: List[ThemeWordList] = Field(default_factory=list)
+
+
+# --- Fin de Nuevos Modelos ---
