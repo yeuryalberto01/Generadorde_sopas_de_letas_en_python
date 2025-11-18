@@ -26,6 +26,10 @@ class PuzzleConfig(BaseModel):
     MAX_SIZE: ClassVar[int] = 35
     MIN_ALPHABET_LENGTH: ClassVar[int] = 2
     ALLOWED_DIFFICULTIES: ClassVar[set[str]] = {"fácil", "medio", "difícil"}
+    DIFFICULTY_ALIASES: ClassVar[dict[str, str]] = {
+        "facil": "fácil",
+        "dificil": "difícil",
+    }
     DEFAULT_DIRECTIONS: ClassVar[list[str]] = DEFAULT_DIRECTION_SET
 
     theme_id: Optional[int] = None
@@ -51,6 +55,7 @@ class PuzzleConfig(BaseModel):
     @classmethod
     def _check_difficulty(cls, value: str) -> str:
         value = value.lower()
+        value = cls.DIFFICULTY_ALIASES.get(value, value)
         if value not in cls.ALLOWED_DIFFICULTIES:
             raise ValueError(f"Dificultad inválida: {value}")
         return value
@@ -150,6 +155,7 @@ class ThemeWordList(BaseModel):
     def _check_difficulty(cls, value: str) -> str:
         value = value.lower()
         # Reutilizamos la validación definida en PuzzleConfig
+        value = PuzzleConfig.DIFFICULTY_ALIASES.get(value, value)
         if value not in PuzzleConfig.ALLOWED_DIFFICULTIES:
             raise ValueError(f"Dificultad inválida: {value}")
         return value

@@ -1,0 +1,3 @@
+2025-11-17 14:44:04 - __main__ - ERROR - Prueba de log de error
+2025-11-17 14:44:04 - core.error_book - ERROR - ERROR CAPTURADO [ValueError]: Prueba de error de validación - Verificar el tipo de datos esperado | Validar entrada del usuario
+2025-11-17 14:44:04 - core.error_book - ERROR - ERROR CAPTURADO [ImportError]: No module named 'test_module' - Verificar que el módulo esté instalado: pip install <module> | Revisar el PYTHONPATH

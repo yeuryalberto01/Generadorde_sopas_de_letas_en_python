@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 from typing import Dict, Iterable, List, Tuple
 
@@ -13,6 +14,8 @@ except ImportError as exc:  # pragma: no cover - fallback para usuarios sin depe
 
 from .models import PuzzleConfig, PuzzleResult, WordPosition
 from .lexicon import validate_word
+
+logger = logging.getLogger(__name__)
 
 DirectionVec = Tuple[int, int]
 
@@ -37,8 +40,8 @@ class PuzzleGenerationError(RuntimeError):
 
 def generate_puzzle(config: PuzzleConfig) -> PuzzleResult:
     """Genera una sopa de letras respetando la configuración proporcionada."""
-
     rows, cols = config.rows, config.cols
+    logger.info("Iniciando generación de puzzle: %dx%d, dificultad %s, %d palabras", rows, cols, config.difficulty, len(config.words))
     grid = np.full((rows, cols), "", dtype="<U1")
     rng = random.Random()
     positions: list[WordPosition] = []
@@ -56,10 +59,12 @@ def generate_puzzle(config: PuzzleConfig) -> PuzzleResult:
     for word in ordered_words:
         placed = _place_word(word, grid, allowed_dirs, rng)
         if placed is None:
+            logger.error("No se pudo colocar la palabra '%s' después de %d intentos", word, MAX_ATTEMPTS_PER_WORD)
             raise PuzzleGenerationError(f"No fue posible colocar la palabra '{word}'.")
         positions.append(WordPosition(word=word, start=placed[0], end=placed[1], direction=placed[2]))
 
     _fill_empty_cells(grid, rng, config.alphabet)
+    logger.info("Puzzle generado exitosamente: %d palabras colocadas", len(positions))
     return PuzzleResult(grid=grid.tolist(), positions=positions)
 
 

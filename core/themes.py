@@ -13,12 +13,15 @@ que está estructurado en torno a tres conceptos principales:
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .db import get_conn
 from .lexicon import validate_word
 from .models import Category, Theme, ThemeWordList
+
+logger = logging.getLogger(__name__)
 
 # region Category Management
 
@@ -32,8 +35,8 @@ def create_category(name: str) -> int:
         try:
             cur.execute("INSERT INTO categories (name) VALUES (?);", (name.strip(),))
             return cur.lastrowid
-        except sqlite3.IntegrityError:
-            raise ValueError(f"La categoría '{name.strip()}' ya existe.")
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"La categoría '{name.strip()}' ya existe.") from exc
 
 
 def list_categories() -> List[Category]:
@@ -68,8 +71,8 @@ def update_category(category_id: int, name: str) -> None:
             )
             if cur.rowcount == 0:
                 raise ValueError(f"No existe la categoría con id {category_id}.")
-        except sqlite3.IntegrityError:
-            raise ValueError(f"La categoría '{name.strip()}' ya existe.")
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"La categoría '{name.strip()}' ya existe.") from exc
 
 
 # endregion
@@ -83,12 +86,21 @@ def create_theme(
     category_id: Optional[int] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> int:
-    """Crea un nuevo tema y devuelve su ID."""
+    """Crea un nuevo tema con listas de palabras vacías por defecto y devuelve su ID."""
     if not name or not name.strip():
         raise ValueError("El nombre del tema no puede estar vacío.")
     metadata_json = json.dumps(metadata) if metadata else "{}"
     with get_conn() as conn:
         cur = conn.cursor()
+        # Evitar duplicados aún si el esquema previo no tenía UNIQUE.
+        cur.execute(
+            "SELECT id FROM themes WHERE lower(name) = lower(?);",
+            (name.strip(),),
+        )
+        existing = cur.fetchone()
+        if existing:
+            logger.warning("Intento de crear tema duplicado: '%s'", name.strip())
+            raise ValueError(f"El tema '{name.strip()}' ya existe.")
         try:
             cur.execute(
                 """
@@ -97,11 +109,21 @@ def create_theme(
                 """,
                 (name.strip(), description, category_id, metadata_json),
             )
-            return cur.lastrowid
-        except sqlite3.IntegrityError:
-            raise ValueError(
-                f"El tema '{name.strip()}' ya existe en esta categoría."
-            )
+            theme_id = cur.lastrowid
+            # Crear listas de palabras vacías para cada dificultad
+            for difficulty in ["fácil", "medio", "difícil"]:
+                cur.execute(
+                    """
+                    INSERT INTO theme_word_lists (theme_id, difficulty, words_json)
+                    VALUES (?, ?, ?);
+                    """,
+                    (theme_id, difficulty, "[]"),
+                )
+            logger.info("Tema creado: '%s' con ID %d", name.strip(), theme_id)
+            return theme_id
+        except sqlite3.IntegrityError as exc:
+            logger.warning("Intento de crear tema duplicado: '%s'", name.strip())
+            raise ValueError(f"El tema '{name.strip()}' ya existe.") from exc
 
 
 def get_theme(theme_id: int) -> Optional[Theme]:
@@ -220,10 +242,10 @@ def update_theme_details(
             )
             if cur.rowcount == 0:
                 raise ValueError(f"No existe el tema con id {theme_id}.")
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as exc:
             raise ValueError(
                 f"El tema '{name.strip()}' ya existe en esta categoría."
-            )
+            ) from exc
 
 
 def update_theme_metadata(theme_id: int, metadata: Dict[str, Any]) -> None:
@@ -331,6 +353,98 @@ def delete_word_list(word_list_id: int) -> None:
         cur.execute("DELETE FROM theme_word_lists WHERE id = ?;", (word_list_id,))
         if cur.rowcount == 0:
             raise ValueError(f"No existe la lista de palabras con id {word_list_id}.")
+
+
+# endregion
+
+# region Additional Functions for Dialog Compatibility
+
+
+def update_theme(theme_id: int, name: str, description: Optional[str]) -> None:
+    """Alias for update_theme_details for dialog compatibility."""
+    update_theme_details(theme_id, name, description)
+
+
+def get_words_for_theme(
+    theme_id: int, difficulty: str = "medio"
+) -> List[Tuple[int, str, str]]:
+    """Devuelve una lista de tuplas (word_id, normalized, original) para las palabras del tema en la dificultad especificada."""
+    theme = get_theme(theme_id)
+    if theme is None:
+        return []
+    words = []
+    word_lists = getattr(theme, 'word_lists', [])
+    if not isinstance(word_lists, list):
+        return []
+    for word_list in word_lists:
+        if word_list.difficulty == difficulty:
+            for idx, word in enumerate(word_list.words):
+                word_id = word_list.id * 1000 + idx  # Fake id
+                words.append((word_id, word, word))  # normalized and original are the same
+            break
+    return words
+
+
+def add_word_to_theme(theme_id: int, word: str, difficulty: str = "medio") -> None:
+    """Agrega una palabra a la lista de palabras del tema para la dificultad especificada."""
+    # Validate word
+    result = validate_word(word)
+    if not result.valid:
+        raise ValueError("; ".join(result.errors))
+    normalized = result.normalized
+
+    # Check if word list exists for the difficulty
+    with get_conn() as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, words_json FROM theme_word_lists WHERE theme_id = ? AND difficulty = ?;",
+            (theme_id, difficulty)
+        )
+        row = cur.fetchone()
+        if row is None:
+            # This shouldn't happen since we create all difficulties
+            add_or_update_word_list(theme_id, difficulty, [normalized])
+        else:
+            # Add to existing list if not already there
+            words = json.loads(row["words_json"])
+            if normalized not in words:
+                words.append(normalized)
+                cur.execute(
+                    "UPDATE theme_word_lists SET words_json = ? WHERE id = ?;",
+                    (json.dumps(words), row["id"])
+                )
+                logger.info(
+                    "Palabra '%s' agregada al tema %d en dificultad %s",
+                    normalized, theme_id, difficulty
+                )
+
+
+def delete_word(word_id: int) -> None:
+    """Elimina una palabra del tema basado en el word_id fake."""
+    # Parse word_id: list_id * 1000 + idx
+    list_id = word_id // 1000
+    idx = word_id % 1000
+
+    # Get the word list
+    with get_conn() as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT words_json FROM theme_word_lists WHERE id = ?;", (list_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise ValueError(f"No existe la lista de palabras con id {list_id}.")
+        words = json.loads(row["words_json"])
+        if idx >= len(words):
+            raise ValueError(f"Índice de palabra inválido: {idx}")
+        # Remove the word
+        words.pop(idx)
+        # Update the list
+        cur.execute(
+            "UPDATE theme_word_lists SET words_json = ? WHERE id = ?;",
+            (json.dumps(words), list_id)
+        )
+        logger.info("Palabra eliminada del tema, list_id %d, índice %d", list_id, idx)
 
 
 # endregion

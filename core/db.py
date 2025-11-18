@@ -44,12 +44,11 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS themes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
+                name TEXT NOT NULL UNIQUE,
                 description TEXT,
                 category_id INTEGER,
                 metadata_json TEXT,
-                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
-                UNIQUE (name, category_id)
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
             );
             """
         )

@@ -134,6 +134,7 @@ class HomeWidget(QWidget):
 
         self.hero_badge = QLabel("✨ Modo creativo activo", hero)
         self.hero_badge.setObjectName("heroBadge")
+        self.hero_badge.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         text_column.addWidget(self.hero_badge)
         text_column.addWidget(hero_title)
@@ -239,7 +240,6 @@ class HomeWidget(QWidget):
                 border-radius: 999px;
                 padding: 4px 14px;
                 font-weight: 600;
-                align-self: flex-start;
             }
             QFrame#heroHighlight {
                 background-color: #0f172a;

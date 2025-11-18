@@ -26,7 +26,7 @@ DEFAULT_CONFIG = {
         "min_length": 3,
         "max_length": 20,
     },
-    "difficulty": ["easy", "medium", "hard"],
+    "difficulty": ["fácil", "medio", "difícil"],
     "theme": {
         "background_color": "#2b2b2b",
         "page_color": "#ffffff",
@@ -47,3 +47,4 @@ def load_config() -> dict:
             # Si hay error en el JSON, se usa solo DEFAULT_CONFIG
             pass
     return cfg
+
